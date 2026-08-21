@@ -10,7 +10,7 @@ export default function ComparePage() {
   const [result, setResult] = useState<string | null>(null);
 
   const handleCompare = async () => {
-    if (!player1 || !player2) return;
+    if (!player1.trim() || !player2.trim()) return;
     setLoading(true);
     setResult(null);
 
@@ -39,29 +39,29 @@ export default function ComparePage() {
             <Sparkles className="w-3.5 h-3.5" /> مدعوم بـ Gemini 2.5 Flash
           </div>
           <h1 className="text-3xl font-black text-white">المقارنة التكتيكية الذكية (Head-to-Head)</h1>
-          <p className="text-slate-400 text-xs sm:text-sm">قارن بين أي نجمين أو فريقين للحصول على تحليل فني بلهجة مصرية كروية</p>
+          <p className="text-slate-400 text-xs sm:text-sm">قارن بين أي نجمين أو فريقين للحصول على تحليل فني بلهجة كروية مصرية</p>
         </div>
 
         {/* Input Box */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-300">اللاعب الأول:</label>
+              <label className="text-xs font-bold text-slate-300">الطرف الأول (لاعب / فريق):</label>
               <input
                 type="text"
                 value={player1}
                 onChange={(e) => setPlayer1(e.target.value)}
-                placeholder="مثال: محمد صلاح"
+                placeholder="مثال: محمد صلاح أو الأهلي"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:border-emerald-500 focus:outline-none text-white"
               />
             </div>
             <div className="space-y-2">
-              <label className="text-xs font-bold text-slate-300">اللاعب الثاني:</label>
+              <label className="text-xs font-bold text-slate-300">الطرف الثاني (لاعب / فريق):</label>
               <input
                 type="text"
                 value={player2}
                 onChange={(e) => setPlayer2(e.target.value)}
-                placeholder="مثال: عمر مرموش"
+                placeholder="مثال: عمر مرموش أو الزمالك"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm focus:border-emerald-500 focus:outline-none text-white"
               />
             </div>
@@ -73,11 +73,11 @@ export default function ComparePage() {
             className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-slate-950 font-bold py-3 rounded-xl transition flex items-center justify-center gap-2 text-sm shadow-lg"
           >
             <Swords className="w-4 h-4" />
-            {loading ? 'جارِ التحليل الفني والمقارنة...' : 'ابدأ المقارنة التكتيكية'}
+            {loading ? 'جارِ التحليل الفني والمقارنة عبر Gemini...' : 'ابدأ المقارنة التكتيكية'}
           </button>
         </div>
 
-        {/* Result Area */}
+        {/* Result Card */}
         {result && (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 sm:p-8 space-y-4 shadow-2xl animate-in fade-in">
             <div className="flex items-center gap-2 text-emerald-400 font-bold text-sm border-b border-slate-800 pb-3">
