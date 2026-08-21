@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { processRawFootballNews } from '@/lib/gemini';
+import { generateFootballContent } from '@/lib/gemini';
 
 export async function POST(req: Request) {
   try {
-    const { rawText } = await req.json();
-    const processed = await processRawFootballNews(rawText);
-    return NextResponse.json(processed);
+    const { text } = await req.json();
+    const result = await generateFootballContent(text || 'خبر رياضي تجريبي');
+    return NextResponse.json(result);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
