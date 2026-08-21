@@ -1,60 +1,56 @@
-interface PublishPayload {
-  caption: string;
-  imageUrl?: string;
-  linkUrl?: string;
-}
-
-// 1. النشر الفوري على قناة/جروب تليجرام
-export async function publishToTelegram({ caption, imageUrl }: PublishPayload) {
+export async function publishToTelegram(
+  caption: string | undefined,
+  articleUrl: string,
+  imageUrl?: string
+) {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const chatId = process.env.TELEGRAM_CHAT_ID;
 
   if (!token || !chatId) {
-    throw new Error('Telegram credentials missing');
+    console.warn('⚠️ Telegram Bot Token or Chat ID is missing. Skipping telegram publish.');
+    return;
   }
 
-  const endpoint = imageUrl
-    ? `https://api.telegram.org/bot${token}/sendPhoto`
-    : `https://api.telegram.org/bot${token}/sendMessage`;
+  // ضمان وجود نص في الرسالة حتى لو رجع الـ AI كابشن فارغ
+  const messageText = caption && caption.trim().length > 0
+    ? `${caption}\n\n🔗 التفاصيل الكاملة: ${articleUrl}`
+    : `🚨 خبر جديد من EDGE Football\n\n🔗 التفاصيل الكاملة: ${articleUrl}`;
 
-  const body = imageUrl
-    ? { chat_id: chatId, photo: imageUrl, caption, parse_mode: 'HTML' }
-    : { chat_id: chatId, text: caption, parse_mode: 'HTML' };
+  try {
+    if (imageUrl) {
+      const response = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          photo: imageUrl,
+          caption: messageText.slice(0, 1024), // حد تليجرام الأقصى للكابشن
+        }),
+      });
 
-  const res = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.description || 'Failed to post to Telegram');
-  return data;
-}
-
-// 2. النشر على صفحة فيسبوك عبر Meta Graph API
-export async function publishToFacebook({ caption, imageUrl, linkUrl }: PublishPayload) {
-  const pageId = process.env.FACEBOOK_PAGE_ID;
-  const accessToken = process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
-
-  if (!pageId || !accessToken) {
-    throw new Error('Facebook credentials missing');
+      const resData = await response.json();
+      if (!resData.ok) {
+        // Fallback إلى رسالة نصية عادية إذا فشل رابط الصورة
+        await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: messageText,
+          }),
+        });
+      }
+    } else {
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: messageText,
+        }),
+      });
+    }
+  } catch (error) {
+    console.error('Telegram publication error:', error);
   }
-
-  const endpoint = imageUrl
-    ? `https://graph.facebook.com/v19.0/${pageId}/photos`
-    : `https://graph.facebook.com/v19.0/${pageId}/feed`;
-
-  const params = new URLSearchParams({
-    access_token: accessToken,
-    ...(imageUrl ? { url: imageUrl, caption } : { message: caption, link: linkUrl || '' }),
-  });
-
-  const res = await fetch(`${endpoint}?${params.toString()}`, {
-    method: 'POST',
-  });
-
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  return data;
 }
