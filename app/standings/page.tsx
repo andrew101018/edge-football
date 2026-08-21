@@ -1,7 +1,7 @@
 import { getStandings } from '@/lib/football-api';
 import { Trophy } from 'lucide-react';
 
-export const revalidate = 3600; // تحديث الكاش كل ساعة
+export const revalidate = 3600;
 
 const LEAGUES = [
   { id: 39, name: 'الدوري الإنجليزي الممتاز', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
@@ -17,15 +17,14 @@ export default async function StandingsPage({
 }: {
   searchParams: Promise<{ league?: string }>;
 }) {
-  const { league } = await searchParams;
-  const currentLeagueId = league ? parseInt(league, 10) : 39;
+  const resolvedSearchParams = await searchParams;
+  const currentLeagueId = resolvedSearchParams?.league ? parseInt(resolvedSearchParams.league, 10) : 39;
   const standingsData = await getStandings(currentLeagueId);
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 md:p-12 font-sans" dir="rtl">
       <div className="max-w-5xl mx-auto space-y-8">
         
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-5">
           <div className="flex items-center gap-3">
             <Trophy className="w-8 h-8 text-amber-400" />
@@ -36,7 +35,6 @@ export default async function StandingsPage({
           </div>
         </div>
 
-        {/* أزرار اختيار الدوري */}
         <div className="flex flex-wrap gap-2">
           {LEAGUES.map((l) => (
             <a
@@ -54,7 +52,6 @@ export default async function StandingsPage({
           ))}
         </div>
 
-        {/* جدول الترتيب */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
           <div className="overflow-x-auto">
             <table className="w-full text-right text-xs sm:text-sm">
@@ -80,28 +77,28 @@ export default async function StandingsPage({
                   </tr>
                 ) : (
                   standingsData.map((row: any) => (
-                    <tr key={row.team.id} className="hover:bg-slate-800/40 transition">
+                    <tr key={row.team?.id || Math.random()} className="hover:bg-slate-800/40 transition">
                       <td className="p-4 text-center font-mono font-bold text-slate-400">
                         {row.rank}
                       </td>
                       <td className="p-4 font-bold text-white flex items-center gap-2.5">
-                        {row.team.logo && (
+                        {row.team?.logo && (
                           <img src={row.team.logo} alt={row.team.name} className="w-6 h-6 object-contain" />
                         )}
-                        <span className="truncate max-w-[160px] sm:max-w-none">{row.team.name}</span>
+                        <span className="truncate max-w-[160px] sm:max-w-none">{row.team?.name}</span>
                       </td>
-                      <td className="p-4 text-center font-mono text-slate-300">{row.all.played}</td>
-                      <td className="p-4 text-center font-mono text-emerald-400">{row.all.win}</td>
-                      <td className="p-4 text-center font-mono text-amber-400">{row.all.draw}</td>
-                      <td className="p-4 text-center font-mono text-red-400">{row.all.lose}</td>
+                      <td className="p-4 text-center font-mono text-slate-300">{row.all?.played || 0}</td>
+                      <td className="p-4 text-center font-mono text-emerald-400">{row.all?.win || 0}</td>
+                      <td className="p-4 text-center font-mono text-amber-400">{row.all?.draw || 0}</td>
+                      <td className="p-4 text-center font-mono text-red-400">{row.all?.lose || 0}</td>
                       <td className="p-4 text-center font-mono text-slate-400 text-xs">
-                        {row.all.goals.for}:{row.all.goals.against}
+                        {row.all?.goals?.for || 0}:{row.all?.goals?.against || 0}
                       </td>
                       <td className="p-4 text-center font-mono text-slate-300">
-                        {row.goalsDiff > 0 ? `+${row.goalsDiff}` : row.goalsDiff}
+                        {(row.goalsDiff || 0) > 0 ? `+${row.goalsDiff}` : row.goalsDiff || 0}
                       </td>
                       <td className="p-4 text-center font-mono font-black text-emerald-400 text-base">
-                        {row.points}
+                        {row.points || 0}
                       </td>
                     </tr>
                   ))
