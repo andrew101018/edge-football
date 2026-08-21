@@ -1,81 +1,129 @@
 import { getLiveFixtures } from '@/lib/football-api';
-import { Activity, Clock } from 'lucide-react';
+import Link from 'next/link';
+import { Activity, Clock, Shield, Flame, Trophy, MapPin } from 'lucide-react';
 
-export const revalidate = 30; // تحديث تلقائي كل 30 ثانية
+export const revalidate = 15; // تحديث فوري كل 15 ثانية للنتائج الحية
 
-export default async function LiveMatchCenter() {
-  const matches = await getLiveFixtures();
+export default async function LiveMatchesPage() {
+  const liveMatches = await getLiveFixtures();
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 font-sans" dir="rtl">
-      <div className="max-w-5xl mx-auto space-y-6">
+    <main className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 md:p-12 font-sans" dir="rtl">
+      <div className="max-w-6xl mx-auto space-y-8">
         
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-6">
           <div className="flex items-center gap-3">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-            </span>
-            <h1 className="text-2xl font-black text-white">مركز المباريات المباشرة</h1>
+            <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+              <Activity className="w-5 h-5 text-red-500 animate-pulse" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-black text-white">مركز المباريات المباشرة (Live Center)</h1>
+              <p className="text-slate-400 text-xs sm:text-sm mt-0.5">متابعة دقيقة للأهداف، الإحصائيات، وشريط الأحداث الحية لحظة بلحظة</p>
+            </div>
           </div>
-          <span className="text-xs bg-slate-800 text-slate-400 px-3 py-1 rounded-full border border-slate-700">
-            تحديث تلقائي
-          </span>
+          <div className="flex items-center gap-2 text-xs font-mono bg-slate-900 border border-slate-800 px-3.5 py-1.5 rounded-xl text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            تحديث تلقائي مستمر
+          </div>
         </div>
 
-        {/* Matches Grid */}
-        {matches.length === 0 ? (
-          <div className="text-center py-16 bg-slate-900/50 border border-slate-800 rounded-xl">
-            <Activity className="w-10 h-10 text-slate-600 mx-auto mb-3 animate-pulse" />
-            <p className="text-slate-400 font-medium">لا توجد مباريات جارية حالياً</p>
-            <span className="text-xs text-slate-500 mt-1 block">تابعنا لمشاهدة التغطية الحية للمباريات القادمة</span>
+        {/* Live Matches List */}
+        {(!liveMatches || liveMatches.length === 0) ? (
+          <div className="text-center py-20 bg-slate-900/50 border border-slate-800 rounded-3xl space-y-4">
+            <Trophy className="w-12 h-12 text-slate-600 mx-auto" />
+            <h3 className="text-lg font-bold text-slate-300">لا توجد مباريات جارية في هذه اللحظة</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              تابع جدول القنوات الناقلة أو عُد لاحقاً مع انطلاق صافرة مباريات الدوريات الكبرى والبطولات الإفريقية.
+            </p>
+            <Link
+              href="/tv-guide"
+              className="inline-block bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold px-4 py-2 rounded-xl text-xs hover:bg-emerald-500/20 transition"
+            >
+              استعراض مواعيد مباريات اليوم
+            </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {matches.map((item: any) => (
-              <div 
-                key={item.fixture.id} 
-                className="bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition rounded-xl p-4 flex flex-col justify-between space-y-4"
-              >
-                {/* البطولة والتوقيت */}
-                <div className="flex justify-between items-center text-xs text-slate-400 border-b border-slate-800/80 pb-2">
-                  <span className="font-semibold text-emerald-400">{item.league.name}</span>
-                  <span className="flex items-center gap-1 bg-red-500/10 text-red-400 px-2 py-0.5 rounded font-mono font-bold">
-                    <Clock className="w-3 h-3" /> {item.fixture.status.elapsed}'
-                  </span>
-                </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {liveMatches.map((m: any) => {
+              const elapsed = m.fixture?.status?.elapsed || 0;
+              const isHalftime = m.fixture?.status?.short === 'HT';
 
-                {/* الفرق والنتيجة */}
-                <div className="flex items-center justify-between px-2">
-                  {/* الفريق الأول */}
-                  <div className="flex items-center gap-3 w-2/5">
-                    <img src={item.teams.home.logo} alt={item.teams.home.name} className="w-8 h-8 object-contain" />
-                    <span className="text-sm font-bold text-slate-200 truncate">{item.teams.home.name}</span>
+              return (
+                <div
+                  key={m.fixture.id}
+                  className="bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-3xl p-6 space-y-5 shadow-2xl transition flex flex-col justify-between"
+                >
+                  {/* Match Header */}
+                  <div className="flex items-center justify-between border-b border-slate-800/80 pb-3 text-xs">
+                    <div className="flex items-center gap-2">
+                      {m.league.logo && (
+                        <img src={m.league.logo} alt={m.league.name} className="w-4 h-4 object-contain" />
+                      )}
+                      <span className="font-bold text-emerald-400 truncate max-w-[180px]">{m.league.name}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 font-bold font-mono">
+                      <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                      <span className="bg-red-500/10 text-red-400 px-2 py-0.5 rounded-lg border border-red-500/20">
+                        {isHalftime ? 'استراحة (HT)' : `${elapsed}'`}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* النتيجة */}
-                  <div className="text-xl font-black bg-slate-950 px-3 py-1 rounded border border-slate-800 text-slate-100 tracking-wider">
-                    {item.goals.home ?? 0} - {item.goals.away ?? 0}
+                  {/* Scoreboard */}
+                  <div className="grid grid-cols-7 items-center gap-2 text-center py-2">
+                    {/* Home Team */}
+                    <div className="col-span-3 flex flex-col items-center space-y-2">
+                      <img
+                        src={m.teams.home.logo}
+                        alt={m.teams.home.name}
+                        className="w-12 h-12 object-contain drop-shadow-md"
+                      />
+                      <span className="font-black text-sm text-slate-100 line-clamp-1">{m.teams.home.name}</span>
+                    </div>
+
+                    {/* Result */}
+                    <div className="col-span-1 flex flex-col items-center">
+                      <div className="bg-slate-950 px-3 py-1.5 rounded-2xl border border-slate-800 text-emerald-400 font-mono text-xl font-black shadow-inner">
+                        {m.goals.home ?? 0} - {m.goals.away ?? 0}
+                      </div>
+                      <span className="text-[10px] text-slate-500 mt-1 font-mono">LIVE</span>
+                    </div>
+
+                    {/* Away Team */}
+                    <div className="col-span-3 flex flex-col items-center space-y-2">
+                      <img
+                        src={m.teams.away.logo}
+                        alt={m.teams.away.name}
+                        className="w-12 h-12 object-contain drop-shadow-md"
+                      />
+                      <span className="font-black text-sm text-slate-100 line-clamp-1">{m.teams.away.name}</span>
+                    </div>
                   </div>
 
-                  {/* الفريق الثاني */}
-                  <div className="flex items-center gap-3 justify-end w-2/5 text-left">
-                    <span className="text-sm font-bold text-slate-200 truncate text-right">{item.teams.away.name}</span>
-                    <img src={item.teams.away.logo} alt={item.teams.away.name} className="w-8 h-8 object-contain" />
+                  {/* Stadium & Referee */}
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-800/60">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="truncate max-w-[160px]">{m.fixture.venue?.name || 'الملعب الرئيسي'}</span>
+                    </div>
+                    <span className="font-mono text-slate-500">{m.fixture.referee || 'طاقم تحكيم معتمد'}</span>
                   </div>
-                </div>
 
-                {/* الملعب */}
-                <div className="text-[11px] text-slate-500 text-center pt-1 border-t border-slate-800/40">
-                  {item.fixture.venue?.name || 'الملعب غير محدد'}
+                  {/* Match Details Link */}
+                  <Link
+                    href={`/live/${m.fixture.id}`}
+                    className="w-full bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-800 hover:border-slate-700 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition"
+                  >
+                    <span>عرض شريط الأحداث والتشكيلة التكتيكية</span>
+                  </Link>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
       </div>
-    </div>
+    </main>
   );
 }
