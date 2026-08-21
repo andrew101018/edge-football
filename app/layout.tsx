@@ -39,6 +39,7 @@ export default function Navbar() {
         <Link href="/" className="flex items-center gap-2">
           <span className="text-xl font-black text-emerald-400 tracking-wider">EDGE</span>
           <span className="text-xl font-bold text-white">FOOTBALL</span>
+        <link rel="manifest" href="/manifest.json" />
         </Link>
 
         {/* الروابط الأساسية */}
