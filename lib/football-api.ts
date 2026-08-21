@@ -56,5 +56,15 @@ export async function getLeagueStandings(leagueId: number, season = 2024) {
   }
 }
 
-// دمج الاسم المستعار لتفادي أخطاء الاستيراد
+export async function getTopScorers(leagueId: number, season = 2024) {
+  try {
+    const res = await fetch(`${BASE_URL}/players/topscorers?league=${leagueId}&season=${season}`, { headers, next: { revalidate: 3600 } });
+    const data = await res.json();
+    return data.response || [];
+  } catch {
+    return [];
+  }
+}
+
+// تصدير الاسم البديل لتفادي تعارض الاستيراد
 export const getStandings = getLeagueStandings;

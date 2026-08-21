@@ -1,27 +1,37 @@
 import webpush from 'web-push';
 import { supabaseAdmin } from './supabase';
 
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT!,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+const rawSubject = process.env.VAPID_SUBJECT || 'mailto:admin@edgefootball.com';
+const vapidSubject = rawSubject.startsWith('http') || rawSubject.startsWith('mailto:')
+  ? rawSubject
+  : `mailto:${rawSubject}`;
 
-export async function broadcastPushNotification(title: string, message: string, url: string) {
-  const { data: subs } = await supabaseAdmin.from('push_subscriptions').select('*');
+const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '';
+const privateKey = process.env.VAPID_PRIVATE_KEY || '';
 
-  if (!subs || subs.length === 0) return;
+if (publicKey && privateKey) {
+  webpush.setVapidDetails(vapidSubject, publicKey, privateKey);
+}
 
-  const payload = JSON.stringify({
-    title,
-    body: message,
-    url,
-    icon: '/icon.png',
-  });
+export { webpush };
 
-  const sendPromises = subs.map((sub) =>
-    webpush
-      .sendNotification(
+export async function sendWebPushNotification(title: string, body: string, url: string = '/') {
+  try {
+    const { data: subscriptions } = await supabaseAdmin
+      .from('push_subscriptions')
+      .select('*');
+
+    if (!subscriptions || subscriptions.length === 0) return;
+
+    const payload = JSON.stringify({
+      title,
+      body,
+      url,
+      icon: '/icon-192.png',
+    });
+
+    const notifications = subscriptions.map((sub: any) =>
+      webpush.sendNotification(
         {
           endpoint: sub.endpoint,
           keys: {
@@ -30,14 +40,16 @@ export async function broadcastPushNotification(title: string, message: string, 
           },
         },
         payload
-      )
-      .catch((err) => {
+      ).catch((err: any) => {
+        // حذف الاشتراكات التالفة أو منتهية الصلاحية تلقائياً
         if (err.statusCode === 410 || err.statusCode === 404) {
-          // حذف الاشتراكات منتهية الصلاحية
           supabaseAdmin.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
         }
       })
-  );
+    );
 
-  await Promise.all(sendPromises);
+    await Promise.allSettled(notifications);
+  } catch (error) {
+    console.error('Push notification trigger error:', error);
+  }
 }
