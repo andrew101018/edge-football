@@ -17,7 +17,7 @@ export interface FootballAiOutput {
 export async function generateFootballContent(rawNews: string): Promise<FootballAiOutput> {
   const prompt = `
 أنت رئيس تحرير ومحلل رياضي مخضرم في منصة EDGE Football.
-المهمة: أعد صياغة الخبر التالي بدقة 100% وبلهجة كروية مصرية ممتعة وجذابة بدون أي معلومات وهمية أو تأليف.
+المهمة: أعد صياغة الخبر التالي بدقة 100% وبلهجة كروية مصرية ممتعة وجذابة وبدون أي معلومات وهمية.
 
 الخبر الأصلي:
 ${rawNews}
