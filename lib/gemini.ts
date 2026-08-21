@@ -34,15 +34,26 @@ ${rawNews}
 }
 `;
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-3.6-flash',
-    contents: prompt,
-    config: {
-      responseMimeType: 'application/json',
-      temperature: 0.7,
-    },
-  });
+  // قائمة الموديلات للتبديل التلقائي في حال وجود ضغط خوادم
+  const modelsToTry = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-3.6-flash'];
 
-  const text = response.text || '{}';
-  return JSON.parse(text) as FootballAiOutput;
+  for (const modelName of modelsToTry) {
+    try {
+      const response = await ai.models.generateContent({
+        model: modelName,
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+          temperature: 0.7,
+        },
+      });
+
+      const text = response.text || '{}';
+      return JSON.parse(text) as FootballAiOutput;
+    } catch (err: any) {
+      console.warn(`⚠️ فشلت المحاولة على موديل ${modelName}، جاري تجربة الموديل البديل...`);
+    }
+  }
+
+  throw new Error('تعذر معالجة الخبر عبر نماذج الذكاء الاصطناعي بسبب الضغط المؤقت على خوادم Google، يرجى المحاولة بعد قليل.');
 }
