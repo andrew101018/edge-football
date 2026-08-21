@@ -1,20 +1,62 @@
 import { NextResponse } from 'next/server';
-import { fetchAndValidateAllFeeds } from '@/lib/rss-fetcher';
 import { supabaseAdmin } from '@/lib/supabase';
 import { generateFootballContent } from '@/lib/gemini';
 import { publishToTelegram } from '@/lib/publisher';
-import { logSystemAlert } from '@/lib/logger';
+import Parser from 'rss-parser';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+const parser = new Parser({
+  customFields: {
+    item: [
+      ['media:content', 'mediaContent'],
+      ['enclosure', 'enclosure'],
+    ],
+  },
+});
+
+const RSS_FEEDS = [
+  { name: 'Sky Sports', url: 'https://www.skysports.com/rss/12040', league: 'كرة عالمية' },
+  { name: 'BBC Football', url: 'https://feeds.bbci.co.uk/sport/football/rss.xml', league: 'كرة عالمية' },
+];
+
 export async function GET() {
   try {
-    const rawItems = await fetchAndValidateAllFeeds();
+    const rawItems: any[] = [];
+
+    // سحب الخلاصات
+    for (const feed of RSS_FEEDS) {
+      try {
+        const feedData = await parser.parseURL(feed.url);
+        for (const item of feedData.items.slice(0, 3)) {
+          if (!item.title || !item.link) continue;
+          
+          let imageUrl = item.enclosure?.url || item.mediaContent?.$.url || 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?w=800';
+          
+          rawItems.push({
+            title: item.title,
+            cleanContent: item.contentSnippet || item.content || item.title,
+            sourceUrl: item.link,
+            sourceName: feed.name,
+            imageUrl,
+            leagueTag: feed.league,
+            contentHash: Buffer.from(item.link).toString('base64').slice(0, 32),
+          });
+        }
+      } catch (err) {
+        console.warn(`Feed fetch failed for ${feed.name}:`, err);
+      }
+    }
+
+    if (rawItems.length === 0) {
+      return NextResponse.json({ message: 'No items fetched from RSS sources' }, { status: 200 });
+    }
+
     const processedArticles: string[] = [];
 
     for (const item of rawItems) {
-      // 1. التحقق من مانع التكرار
+      // فحص التكرار
       const { data: existing } = await supabaseAdmin
         .from('articles')
         .select('id')
@@ -23,33 +65,27 @@ export async function GET() {
 
       if (existing) continue;
 
-      // 2. معالجة المحتوى بالذكاء الاصطناعي
-      let aiResult;
-      try {
-        aiResult = await generateFootballContent(`${item.title}\n\n${item.cleanContent}`);
-      } catch (aiErr) {
-        console.warn('AI processing error for item, skipping:', item.title);
-        continue;
-      }
+      // الصياغة عبر Gemini
+      const aiResult = await generateFootballContent(`${item.title}\n\n${item.cleanContent}`);
 
       const slug = `${item.title
         .toLowerCase()
         .replace(/[^a-z0-9\u0600-\u06FF]/g, '-')
-        .slice(0, 50)}-${Date.now().toString().slice(-4)}`;
+        .slice(0, 45)}-${Date.now().toString().slice(-4)}`;
 
-      // 3. تخزين الخبر في قاعدة البيانات
+      // الإدخال في Supabase
       const { error: dbError } = await supabaseAdmin
         .from('articles')
         .insert({
           title: aiResult.title || item.title,
           slug,
-          summary: aiResult.summary || item.cleanContent?.slice(0, 150),
+          summary: aiResult.summary || item.cleanContent.slice(0, 150),
           content: aiResult.content || item.cleanContent,
           image_url: item.imageUrl,
           source_name: item.sourceName,
           source_url: item.sourceUrl,
           content_hash: item.contentHash,
-          league: item.leagueTag || aiResult.league || 'كرة عالمية',
+          league: aiResult.league || item.leagueTag,
           facebook_post: aiResult.facebook_post,
           telegram_caption: aiResult.telegram_caption,
           youtube_shorts_script: aiResult.youtube_shorts_script,
@@ -57,35 +93,29 @@ export async function GET() {
         });
 
       if (dbError) {
-        console.error('Database insertion error:', dbError);
+        console.error('Supabase insert error:', dbError);
         continue;
       }
 
-      // 4. النشر على تيليجرام بأمان وبدون تعطيل المسار
+      // النشر على تيليجرام
       try {
         const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://edge-football.vercel.app';
         const articleUrl = `${siteUrl}/news/${slug}`;
-        const captionToSend = aiResult.telegram_caption || aiResult.title || item.title;
-
-        await publishToTelegram(captionToSend, articleUrl, item.imageUrl);
-      } catch (tgErr) {
-        console.warn('Telegram publish failed non-blocking:', tgErr);
+        await publishToTelegram(aiResult.telegram_caption || aiResult.title, articleUrl, item.imageUrl);
+      } catch (e) {
+        console.warn('Telegram send failed:', e);
       }
 
-      processedArticles.push(aiResult.title || item.title);
-
+      processedArticles.push(aiResult.title);
       if (processedArticles.length >= 2) break;
     }
 
     return NextResponse.json({
       success: true,
-      timestamp: new Date().toISOString(),
       ingestedCount: processedArticles.length,
       articles: processedArticles,
     });
   } catch (error: any) {
-    console.error('❌ Ingest pipeline error:', error);
-    await logSystemAlert('Cron Ingest Engine Failure', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
