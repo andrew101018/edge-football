@@ -32,11 +32,22 @@ export default function Navbar() {
             المنتخبات 🇪🇬
           </Link>
         </div>
+        <Link href="/compare" className="flex items-center gap-1.5 text-slate-300 hover:text-emerald-400 transition">
+  <Swords className="w-4 h-4 text-emerald-400" />
+  مقارنة اللاعبين
+</Link>
+<Link href="/tv-guide" className="flex items-center gap-1.5 text-slate-300 hover:text-sky-400 transition">
+  <Tv className="w-4 h-4 text-sky-400" />
+  القنوات الناقلة
+</Link>
+</div>
+
 
         {/* زر تفعيل الإشعارات */}
         <div className="flex items-center gap-3">
           <NotificationBell />
         </div>
+
 
       </div>
     </nav>
